@@ -213,6 +213,27 @@
       z-index: 9999; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
     }
+
+    /* Tambahan untuk pemutar video agar proporsional */
+    .video-container {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* Ratio 16:9 */
+      height: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
   </style>
 </head>
 <body>
@@ -389,10 +410,11 @@
           <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" style="background-color: rgba(255,255,255,0.2); border-radius: 50%; padding: 0.8rem;"></button>
         </div>
         
-        <button type="button" class="btn btn-link text-white position-absolute top-50 start-0 translate-middle-y z-3" style="font-size: 2.5rem; text-decoration: none;" onclick="prevLightboxItem(event)">
+        <!-- Tombol Geser: Hanya Tampil jika bukan Video (dikontrol JS) -->
+        <button type="button" id="btnPrevLightbox" class="btn btn-link text-white position-absolute top-50 start-0 translate-middle-y z-3" style="font-size: 2.5rem; text-decoration: none;" onclick="prevLightboxItem(event)">
           <i class="fas fa-chevron-left" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));"></i>
         </button>
-        <button type="button" class="btn btn-link text-white position-absolute top-50 end-0 translate-middle-y z-3" style="font-size: 2.5rem; text-decoration: none;" onclick="nextLightboxItem(event)">
+        <button type="button" id="btnNextLightbox" class="btn btn-link text-white position-absolute top-50 end-0 translate-middle-y z-3" style="font-size: 2.5rem; text-decoration: none;" onclick="nextLightboxItem(event)">
           <i class="fas fa-chevron-right" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));"></i>
         </button>
 
@@ -498,15 +520,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
   <script>
-    /**
-     * =========================================================================
-     * PERHATIAN PENTING:
-     * Tempelkan (Paste) URL Web App Google Apps Script Anda di dalam tanda kutip 
-     * pada variabel API_URL di bawah ini. Pastikan diakhiri dengan /exec
-     * =========================================================================
-     */
     var API_URL = "https://script.google.com/macros/s/AKfycbx_WxkRheIJosc_iP-9uN_YLKgozE_0ZVJBOZV9sIPQ4iHFHVA1PHMgvNJSIDPJ0Wht/exec";
-
 
     var Auth = (function() {
       var _verified = false, _token = null, _user = null;
@@ -518,12 +532,10 @@
       };
     })();
 
-    // FUNGSI INI TELAH DIUBAH 100% UNTUK MENGGUNAKAN FETCH() KE API GOOGLE APPS SCRIPT
     function gasRun(action) {
       var args = Array.prototype.slice.call(arguments, 1);
       var payloadData = {};
       
-      // Menyiapkan data yang akan dikirim berdasarkan aksinya
       if (action === 'loginUser') { payloadData = { username: args[0], password: args[1] }; }
       else if (action === 'destroySession') { payloadData = { token: args[0] }; }
       else if (action === 'getFolders') { payloadData = {}; }
@@ -533,7 +545,7 @@
       else if (action === 'deleteFolder') { payloadData = { token: args[0], id: args[1] }; }
       else if (action === 'uploadSingleFile') { payloadData = { folderId: args[0], fileName: args[1], mimeType: args[2], base64Data: args[3] }; }
 
-      payloadData.action = action; // Tambahkan action ke dalam data
+      payloadData.action = action; 
 
       return new Promise(function(resolve, reject) {
         if(API_URL === "MASUKKAN_URL_WEB_APP_ANDA_DISINI") {
@@ -541,21 +553,14 @@
             return;
         }
 
-        // Tembak API Menggunakan standar Fetch API JavaScript
         fetch(API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Memakai text/plain untuk bypass sistem keamanan CORS Google
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payloadData)
         })
-        .then(function(response) { 
-           return response.json(); 
-        })
-        .then(function(data) { 
-           resolve(data); 
-        })
-        .catch(function(error) { 
-           reject(error); 
-        });
+        .then(function(response) { return response.json(); })
+        .then(function(data) { resolve(data); })
+        .catch(function(error) { reject(error); });
       });
     }
 
@@ -570,10 +575,20 @@
       document.getElementById('fullPageLoader').style.display = show ? 'flex' : 'none';
     }
 
+    // FUNGSI BARU: Mengubah link download Google Drive menjadi link Preview (Iframe)
+    function getDriveIframeUrl(url) {
+      var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
+      if (match && match[1]) {
+        return 'https://drive.google.com/file/d/' + match[1] + '/preview'; // Menggunakan akhiran /preview
+      }
+      return url; 
+    }
+
+    // Fungsi lama dipertahankan untuk tombol "Buka di Browser" opsional
     function getDrivePreviewUrl(url) {
       var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
-        return 'https://drive.google.com/file/d/' + match[1] + '/view';
+        return 'https://drive.google.com/file/d/' + match[1] + '/view'; 
       }
       return url; 
     }
@@ -653,12 +668,17 @@
           }
         });
 
+        // Kontrol Swipe dimatikan untuk Video (agar tidak tergeser saat mengatur volume/timeline)
         var touchStartX = 0, touchEndX = 0;
         var lightboxContent = document.getElementById('lightboxContent');
         
         lightboxContent.addEventListener('touchstart', function(e) { touchStartX = e.changedTouches[0].screenX; });
         lightboxContent.addEventListener('touchend', function(e) {
           touchEndX = e.changedTouches[0].screenX;
+          
+          // Jangan deteksi swipe jika yang sedang dibuka adalah iframe video
+          if (document.querySelector('.video-container iframe')) return;
+
           if (touchStartX - touchEndX > 50) window.nextLightboxItem();
           if (touchEndX - touchStartX > 50) window.prevLightboxItem();
         });
@@ -907,34 +927,47 @@
 
     function renderLightboxContent() {
       var container = document.getElementById('lightboxContent');
+      var btnPrev = document.getElementById('btnPrevLightbox');
+      var btnNext = document.getElementById('btnNextLightbox');
       container.innerHTML = ''; 
       
       var file = currentLightboxFiles[currentLightboxIndex];
       var safeUrl = escapeHTML(file.url);
       
       if (file.type === 'image') {
+        // Mode FOTO: Tombol Prev/Next dimunculkan agar bisa swipe
+        btnPrev.classList.remove('d-none');
+        btnNext.classList.remove('d-none');
+
         container.innerHTML = '<img src="' + safeUrl + '" class="img-fluid" style="max-height: 100vh; width: 100%; object-fit: contain; pointer-events: none;">';
+
       } else if (file.type === 'video') {
-        var previewUrl = getDrivePreviewUrl(safeUrl);
+        // Mode VIDEO: Sembunyikan tombol Prev/Next agar tidak mengganggu interaksi Iframe
+        btnPrev.classList.add('d-none');
+        btnNext.classList.add('d-none');
 
+        var iframeUrl = getDriveIframeUrl(safeUrl);
+        var directUrl = getDrivePreviewUrl(safeUrl);
+
+        // PERBAIKAN: Menampilkan Video langsung di dalam halaman menggunakan Iframe
         container.innerHTML = 
-          '<div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4 m-0 text-center">' +
-             '<a href="' + previewUrl + '" target="_blank" rel="external noopener noreferrer" class="text-decoration-none d-flex flex-column align-items-center w-100 mb-4" style="color: inherit;">' +
-                 '<div class="position-relative mb-4 overflow-hidden" style="width:100%; max-width:400px; aspect-ratio: 16/9; border-radius: 16px; display:flex; align-items:center; justify-content:center; box-shadow: 0 12px 30px rgba(0,0,0,0.5); border: 2px solid #334155; background: linear-gradient(135deg, #1e293b, #0f172a);">' +
-                    '<i class="fas fa-film position-absolute text-white" style="font-size: 8rem; opacity: 0.05;"></i>' +
-                    '<i class="fas fa-play-circle text-primary position-relative z-1" style="font-size: 5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));"></i>' +
-                 '</div>' +
-                 '<h5 class="text-white mb-2 fw-bold">Video Pemutaran</h5>' +
-                 '<p class="text-white-50 small px-3" style="max-width: 300px;">Sistem akan mengalihkan Anda ke Browser untuk memutarnya dengan aman.</p>' +
-             '</a>' +
+          '<div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center px-2 m-0">' +
              
-             '<a href="' + previewUrl + '" target="_blank" rel="external noopener noreferrer" class="btn btn-primary rounded-pill fw-bold px-4 py-3 mb-3 shadow-lg w-100" style="max-width: 250px;">' +
-                '<i class="fas fa-play me-2"></i> Putar Video' +
-             '</a>' +
+             '<div class="w-100" style="max-width: 800px;">' +
+                 '<div class="video-container mb-4">' +
+                    '<iframe src="' + iframeUrl + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>' +
+                 '</div>' +
+                 
+                 '<div class="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4 px-3">' +
+                    '<a href="' + directUrl + '" target="_blank" rel="external noopener noreferrer" class="btn btn-outline-light rounded-pill px-4 py-2" style="font-size: 0.9rem;">' +
+                       '<i class="fas fa-external-link-alt me-2"></i> Buka di Tab Baru' +
+                    '</a>' +
+                    '<button type="button" class="btn btn-outline-secondary text-white rounded-pill px-4 py-2 border-secondary" onclick="lightboxModalObj.hide()" style="font-size: 0.9rem;">' +
+                       '<i class="fas fa-times me-2"></i> Tutup Video' +
+                    '</button>' +
+                 '</div>' +
+             '</div>' +
 
-             '<button type="button" class="btn btn-outline-light rounded-pill btn-sm px-4 py-2" onclick="copyToClipboard(\'' + previewUrl + '\')">' +
-                '<i class="fas fa-copy me-2"></i> Salin Link Video' +
-             '</button>' +
           '</div>';
       }
     }
