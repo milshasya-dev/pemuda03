@@ -214,16 +214,17 @@
       align-items: center; justify-content: center;
     }
 
-    /* Tambahan untuk pemutar video agar proporsional */
+    /* Pembaruan Container Video agar luas dan proporsional di HP */
     .video-container {
       position: relative;
       width: 100%;
-      padding-bottom: 56.25%; /* Ratio 16:9 */
-      height: 0;
+      height: 65vh; /* Menyesuaikan tinggi dengan 65% tinggi layar HP */
+      min-height: 350px;
       border-radius: 12px;
       overflow: hidden;
-      background: #000;
+      background: #1e293b; /* Warna latar elegan pengganti hitam pekat */
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
     }
     
     .video-container iframe {
@@ -575,7 +576,6 @@
       document.getElementById('fullPageLoader').style.display = show ? 'flex' : 'none';
     }
 
-    // FUNGSI BARU: Mendapatkan URL Thumbnail Video dari Drive
     function getDriveThumbnailUrl(url) {
       var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
@@ -584,16 +584,14 @@
       return ''; 
     }
 
-    // FUNGSI BARU: Mengubah link download Google Drive menjadi link Preview (Iframe)
     function getDriveIframeUrl(url) {
       var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
-        return 'https://drive.google.com/file/d/' + match[1] + '/preview'; // Menggunakan akhiran /preview
+        return 'https://drive.google.com/file/d/' + match[1] + '/preview';
       }
       return url; 
     }
 
-    // Fungsi lama dipertahankan untuk tombol "Buka di Browser" opsional
     function getDrivePreviewUrl(url) {
       var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
@@ -677,7 +675,6 @@
           }
         });
 
-        // Kontrol Swipe dimatikan untuk Video (agar tidak tergeser saat mengatur volume/timeline)
         var touchStartX = 0, touchEndX = 0;
         var lightboxContent = document.getElementById('lightboxContent');
         
@@ -685,7 +682,6 @@
         lightboxContent.addEventListener('touchend', function(e) {
           touchEndX = e.changedTouches[0].screenX;
           
-          // Jangan deteksi swipe jika yang sedang dibuka adalah iframe video
           if (document.querySelector('.video-container iframe')) return;
 
           if (touchStartX - touchEndX > 50) window.nextLightboxItem();
@@ -942,27 +938,23 @@
       var safeUrl = escapeHTML(file.url);
       
       if (file.type === 'image') {
-        // Mode FOTO: Tombol Prev/Next dimunculkan agar bisa swipe
         btnPrev.classList.remove('d-none');
         btnNext.classList.remove('d-none');
 
         container.innerHTML = '<img src="' + safeUrl + '" class="img-fluid" style="max-height: 100vh; width: 100%; object-fit: contain; pointer-events: none;">';
 
       } else if (file.type === 'video') {
-        // Mode VIDEO: Sembunyikan tombol Prev/Next agar tidak mengganggu interaksi Iframe
         btnPrev.classList.add('d-none');
         btnNext.classList.add('d-none');
 
         var iframeUrl = getDriveIframeUrl(safeUrl);
         var directUrl = getDrivePreviewUrl(safeUrl);
 
-        // PERBAIKAN: Menampilkan Video langsung di dalam halaman menggunakan Iframe
         container.innerHTML = 
           '<div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center px-2 m-0">' +
-             
              '<div class="w-100" style="max-width: 800px;">' +
                  '<div class="video-container mb-4">' +
-                    '<iframe src="' + iframeUrl + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>' +
+                    '<iframe src="' + iframeUrl + '" allow="autoplay; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>' +
                  '</div>' +
                  
                  '<div class="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4 px-3">' +
@@ -974,7 +966,6 @@
                     '</button>' +
                  '</div>' +
              '</div>' +
-
           '</div>';
       }
     }
