@@ -214,26 +214,28 @@
       align-items: center; justify-content: center;
     }
 
-    /* Pembaruan Container Video agar luas dan proporsional di HP */
     .video-container {
       position: relative;
       width: 100%;
-      height: 65vh; /* Menyesuaikan tinggi dengan 65% tinggi layar HP */
+      height: 65vh; 
       min-height: 350px;
       border-radius: 12px;
       overflow: hidden;
-      background: #1e293b; /* Warna latar elegan pengganti hitam pekat */
+      background: #000000; /* Hitam pekat agar menyatu dengan pemutar video */
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       border: 1px solid #334155;
     }
     
-    .video-container iframe {
+    /* Tag video kustom */
+    .video-container video {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      object-fit: contain;
       border: 0;
+      outline: none;
     }
   </style>
 </head>
@@ -584,14 +586,6 @@
       return ''; 
     }
 
-    function getDriveIframeUrl(url) {
-      var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
-      if (match && match[1]) {
-        return 'https://drive.google.com/file/d/' + match[1] + '/preview';
-      }
-      return url; 
-    }
-
     function getDrivePreviewUrl(url) {
       var match = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
@@ -649,6 +643,7 @@
         var lightboxEl = document.getElementById('lightboxModal');
         lightboxEl.addEventListener('show.bs.modal', function () { window.history.pushState({ modal: true }, "", "#lightbox"); });
         lightboxEl.addEventListener('hidden.bs.modal', function () {
+          // Matikan video jika modal ditutup
           document.getElementById('lightboxContent').innerHTML = ''; 
           if (window.location.hash === '#lightbox') window.history.back();
         });
@@ -682,7 +677,8 @@
         lightboxContent.addEventListener('touchend', function(e) {
           touchEndX = e.changedTouches[0].screenX;
           
-          if (document.querySelector('.video-container iframe')) return;
+          // Jangan deteksi swipe jika yang disentuh adalah elemen pemutar video
+          if (e.target.tagName.toLowerCase() === 'video') return;
 
           if (touchStartX - touchEndX > 50) window.nextLightboxItem();
           if (touchEndX - touchStartX > 50) window.prevLightboxItem();
@@ -947,14 +943,21 @@
         btnPrev.classList.add('d-none');
         btnNext.classList.add('d-none');
 
-        var iframeUrl = getDriveIframeUrl(safeUrl);
         var directUrl = getDrivePreviewUrl(safeUrl);
 
+        // KUNCI PERUBAHAN: Membajak video mentah (MP4) dengan HTML5 Native Player <video>
+        // Ini akan menghilangkan semua antarmuka ramai milik Google Drive
+        
         container.innerHTML = 
           '<div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center px-2 m-0">' +
              '<div class="w-100" style="max-width: 800px;">' +
                  '<div class="video-container mb-4">' +
-                    '<iframe src="' + iframeUrl + '" allow="autoplay; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>' +
+                    
+                    '<video controls autoplay playsinline controlsList="nodownload noremoteplayback">' +
+                        '<source src="' + safeUrl + '" type="video/mp4">' +
+                        'Maaf, pemutar video tidak didukung oleh perangkat ini.' +
+                    '</video>' +
+
                  '</div>' +
                  
                  '<div class="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4 px-3">' +
